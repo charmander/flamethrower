@@ -101,36 +101,18 @@ readString template = case template of
 		in (Character c : parts, rest)
 	[] -> error "Expected end of string before end of input"
 
-parseBase :: Int -> String -> Int
-parseBase base [] = 0
-parseBase base s = parseBase base (init s) + base * digitToInt (last s)
-
 readEscape :: String -> ([StringPart], String)
 readEscape s@(c:cs) =
-	case span isDigit s of
-		([], _) -> case c of
-			'&'  -> readString cs
-			'\\' -> mapFst (Character '\\':) $ readString cs
-			'"'  -> mapFst (Character '"':)  $ readString cs
-			'#'  -> mapFst (Character '#':)  $ readString cs
-			'a'  -> mapFst (Character '\a':) $ readString cs
-			'b'  -> mapFst (Character '\b':) $ readString cs
-			'f'  -> mapFst (Character '\f':) $ readString cs
-			'n'  -> mapFst (Character '\n':) $ readString cs
-			'r'  -> mapFst (Character '\r':) $ readString cs
-			't'  -> mapFst (Character '\t':) $ readString cs
-			'v'  -> mapFst (Character '\v':) $ readString cs
-			'x'  -> case span isHexDigit cs of
-				([], _) -> error "Expected one or more hexadecimal digits."
-				(digits, rest) -> mapFst (Character (chr $ parseBase 16 digits):) $ readString rest
-			'o'  -> case span isOctDigit cs of
-				([], _) -> error "Expected one or more octal digits."
-				(digits, rest) -> mapFst (Character (chr $ parseBase 8 digits):) $ readString rest
-			'^'
-				| let o = ord (head cs) in 64 <= o && o <= 94 ->
-					mapFst ((:) . Character . chr $ ord (head cs) - 64) . readString $ tail cs
-			_ -> error $ "Unrecognized escape character " ++ show c ++ "."
-		(digits, rest) -> mapFst (Character (chr $ parseBase 10 digits):) $ readString rest
+	case c of
+		'#' -> mapFst (Character '#':) $ readString cs
+		'&' -> readString cs
+		_
+			| isSpace c -> case span isSpace cs of
+				(_, '\\':rest) -> readString rest
+				_ -> error "Gap must end with a backslash."
+			| otherwise -> case readLitChar ('\\':s) of
+				[(c, rest)] -> mapFst (Character c:) $ readString rest
+				_ -> error "Unrecognized escape sequence."
 
 readInterpolation :: String -> ([StringPart], String)
 readInterpolation template =
