@@ -1,128 +1,58 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Flamethrower (escapeContent, escapeAttributeValue, flamethrower, flamef) where
+module Flamethrower where
 
 import Data.Maybe (fromJust)
-import Data.List (intercalate)
-import Data.Char (toLower)
-
-import qualified Flamethrower.Lexer as L
-import Flamethrower.Parser
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
-import Language.Haskell.TH.Syntax
-import Language.Haskell.Meta.Parse.Careful (parseExp)
 
-data Escaper = Escaper Name (Char -> String)
-data FunctionMap = FunctionMap { escapeContentName :: Name, escapeAttributeValueName :: Name, concatName :: Name }
+import qualified Flamethrower.Lexer as L
+import qualified Flamethrower.Parser as P
+import qualified Flamethrower.Compiler as C
+import Flamethrower.Escape
 
-escapeContent' :: Char -> String
-escapeContent' c = case c of
-	'&' -> "&amp;"
-	'<' -> "&lt;"
-	'>' -> "&gt;"
-	_ -> [c]
+data FunctionMap = FunctionMap {
+	escapeContentName :: Name,
+	escapeAttributeValueName :: Name,
+	listConcatName :: Name,
+	textConcatName :: Name
+}
 
-escapeContent :: String -> String
-escapeContent = concatMap escapeContent'
+codeTreeToExpression :: FunctionMap -> C.CodeTree -> Exp
+codeTreeToExpression functionMap tree = case tree of
+	C.Text s -> ListE [LitE $ StringL s]
+	C.Expression escaper exp -> ListE . replicate 1 $
+		case escaper of
+			None -> exp
+			Content -> VarE (escapeContentName functionMap) `AppE` exp
+			Attribute -> VarE (escapeAttributeValueName functionMap) `AppE` exp
+	C.If condition truePart falsePart ->
+		let cond = CondE condition (ListE $ map (codeTreeToExpression functionMap) truePart) (ListE $ map (codeTreeToExpression functionMap) falsePart)
+		in VarE (listConcatName functionMap) `AppE` cond
 
-escapeAttributeValue' :: Char -> String
-escapeAttributeValue' c = case c of
-	'&' -> "&amp;"
-	'"' -> "&quot;"
-	_ -> [c]
-
-escapeAttributeValue :: String -> String
-escapeAttributeValue = concatMap escapeAttributeValue'
-
-compileStringPart :: Maybe Escaper -> L.StringPart -> Exp
-compileStringPart Nothing part = case part of
-	L.Character c -> LitE (StringL [c])
-	L.Interpolation i -> case parseExp i of
-		Left s -> error s
-		Right e -> e
-compileStringPart (Just (Escaper name escaper)) part = case part of
-	L.Character c -> LitE $ StringL $ escaper c
-	L.Interpolation i ->
-		case parseExp i of
-			Left s -> error s
-			Right e -> VarE name `AppE` e
-
-compileString :: FunctionMap -> Maybe Escaper -> [L.StringPart] -> Exp
-compileString FunctionMap { concatName } escaper parts = AppE (VarE concatName) $ ListE $ map (compileStringPart escaper) parts
-
-voidTags :: [String]
-voidTags = ["area", "base", "br", "col", "command", "embed", "hr", "img", "input", "keygen", "link", "meta", "param", "source", "track", "wbr"]
-
-isVoid :: String -> Bool
-isVoid = flip elem voidTags . map toLower
-
-compile :: FunctionMap -> Node -> Exp
-compile functionMap @ FunctionMap { escapeContentName, escapeAttributeValueName, concatName } node = do
-	let
-		separate :: [Node] -> ([Node], [Node], [Node])
-		separate [] = ([], [], [])
-		separate (x:xs) =
-			let (a, b, c) = separate xs
-			in case x of
-				ClassNode _ -> (x:a, b, c)
-				AttributeNode _ _ -> (a, x:b, c)
-				_ -> (a, b, x:c)
-
-		classToString :: Node -> String
-		classToString (ClassNode name) = name
-
-		contentEscaper = Just (Escaper escapeContentName escapeContent')
-		attributeEscaper = Just (Escaper escapeAttributeValueName escapeAttributeValue')
-
-		compile' = compile functionMap
-
-	case node of
-		ElementNode name children ->
-			case separate children of
-				(classes, attributes, content) | not $ isVoid name ->
-					AppE (VarE concatName) $ ListE $
-					(LitE $ StringL $ '<' : name) :
-					(case classes of
-						[] -> []
-						_  -> LitE (StringL " class=\"") : LitE (StringL (unwords (map classToString classes))) : [LitE (StringL "\"")]
-					) ++
-					map compile' attributes ++
-					LitE (StringL ">") :
-					map compile' content ++
-					[LitE $ StringL $ "</" ++ name ++ ">"]
-				(classes, attributes, []) ->
-					AppE (VarE concatName) $ ListE $
-					(LitE $ StringL $ '<' : name) :
-					(case classes of
-						[] -> []
-						_  -> LitE (StringL " class=\"") : LitE (StringL (unwords (map classToString classes))) : [LitE (StringL "\"")]
-					) ++
-					map compile' attributes ++
-					[LitE (StringL ">")]
-				_ -> error $ "The void element <" ++ name ++ "> cannot have content."
-		StringNode value ->
-			case value of
-				String parts -> compileString functionMap contentEscaper parts
-				Raw parts -> compileString functionMap Nothing parts
-		AttributeNode name value ->
-			case value of
-				Nothing -> LitE $ StringL $ ' ' : name
-				Just (StringNode (String parts)) -> AppE (VarE concatName) $ ListE $ (LitE $ StringL $ ' ' : name ++ "=\"") : compileString functionMap attributeEscaper parts : [LitE (StringL "\"")]
-
-compileTemplate :: FunctionMap -> String -> Exp
-compileTemplate functionMap = ListE . map (compile functionMap) . parse . L.lex
+compileTemplate :: FunctionMap -> String -> [Exp]
+compileTemplate functionMap = map (codeTreeToExpression functionMap) . C.compile . P.parse . L.lex
 
 flamethrower' :: String -> Q Exp
 flamethrower' template = do
-	escapeContentName <- fmap fromJust $ lookupValueName "Flamethrower.escapeContent"
-	escapeAttributeValueName <- fmap fromJust $ lookupValueName "Flamethrower.escapeAttributeValue"
-	concatName <- fmap fromJust $ lookupValueName "Prelude.concat"
+	let
+		get :: String -> Q Name
+		get = fmap fromJust . lookupValueName
 
-	return . AppE (VarE concatName) $ compileTemplate FunctionMap { escapeContentName, escapeAttributeValueName, concatName } template
+	[escapeContentName, escapeAttributeValueName, listConcatName, textConcatName] <-
+		mapM get ["Flamethrower.Escape.escapeContent", "Flamethrower.Escape.escapeAttributeValue", "Prelude.concat", "Data.Text.concat"]
+
+	let functionMap = FunctionMap { escapeContentName, escapeAttributeValueName, listConcatName, textConcatName }
+
+	return $ VarE textConcatName `AppE` (VarE listConcatName `AppE` ListE (compileTemplate functionMap template))
 
 flamethrower :: QuasiQuoter
-flamethrower = QuasiQuoter { quoteExp = flamethrower' }
+flamethrower = QuasiQuoter {
+	quoteExp = flamethrower',
+	quotePat = error "Flamethrower templates are expressions, not patterns.",
+	quoteDec = error "Flamethrower templates are expressions, not declarations.",
+	quoteType = error "Flamethrower templates are expressions, not types."
+}
 
 flamef :: QuasiQuoter
 flamef = quoteFile flamethrower

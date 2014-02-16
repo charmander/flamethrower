@@ -1,5 +1,5 @@
 name:                flamethrower
-version:             0.0.1.3
+version:             0.0.2.0
 synopsis:            A template engine for HTML
 description:
     Flamethrower is a simpler indentation-based template language for HTML.
@@ -38,7 +38,7 @@ source-repository head
     location: https://github.com/charmander/flamethrower
 
 library
-    exposed-modules:     Flamethrower, Flamethrower.Parser, Flamethrower.Lexer
+    exposed-modules:     Flamethrower, Flamethrower.Parser, Flamethrower.Lexer, Flamethrower.Compiler, Flamethrower.Escape
     other-extensions:    NamedFieldPuns
-    build-depends:       base >=4.6 && <4.7, template-haskell >=2.8 && <2.9, haskell-src-meta >=0.6 && <0.7
+    build-depends:       base >=4.6 && <4.7, template-haskell >=2.8 && <2.9, haskell-src-meta >=0.6 && <0.7, text >= 1.1.0.0 && < 1.2
     default-language:    Haskell2010

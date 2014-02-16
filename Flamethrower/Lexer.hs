@@ -1,6 +1,7 @@
 module Flamethrower.Lexer where
 
 import Data.Char
+import Control.Arrow (first)
 
 data Context = Context { indentType :: Maybe Indent }
 data Indent = Tab | Spaces Int
@@ -13,13 +14,13 @@ data Token =
 	| Attribute String
 	| String [StringPart]
 	| Raw
-	deriving Show
+	| Doctype
+	| If String
+	| Else
+	deriving (Show, Eq)
 
 data StringPart = Character Char | Interpolation String
-	deriving Show
-
-mapFst :: (a -> b) -> (a, c) -> (b, c)
-mapFst f (a, b) = (f a, b)
+	deriving (Show, Eq)
 
 isIdentifierCharacter :: Char -> Bool
 isIdentifierCharacter c = case c of
@@ -77,11 +78,25 @@ readIdentifier input =
 		_ -> (identifier, rest)
 
 lexIdentifier :: Context -> String -> [Token]
-lexIdentifier context template =
-	let (identifier, rest) = readIdentifier template
-	in case rest of
-		':':rest -> Attribute identifier : lexContent context rest
+lexIdentifier context template = case readIdentifier template of
+	(identifier, ':':rest) -> Attribute identifier : lexContent context rest
+	(identifier, rest) -> case identifier of
+		"doctype" -> Doctype : lexContent context rest
+		"if" -> lexIf context rest
+		"else" -> Else : lexContent context rest
 		_ -> Element identifier : lexContent context rest
+
+readLine :: String -> (String, String)
+readLine input = case input of
+	'\r':'\n':rest -> ("", rest)
+	'\n':rest -> ("", rest)
+	'\r':rest -> ("", rest)
+	c:rest -> first (c:) $ readLine rest
+
+lexIf :: Context -> String -> [Token]
+lexIf context template =
+	let (condition, rest) = first (dropWhile (== ' ')) $ readLine template
+	in If condition : Newline : lexIndent context rest
 
 lexComment :: Context -> String -> [Token]
 lexComment context template = case template of
@@ -104,14 +119,14 @@ readString template = case template of
 readEscape :: String -> ([StringPart], String)
 readEscape s@(c:cs) =
 	case c of
-		'#' -> mapFst (Character '#':) $ readString cs
+		'#' -> first (Character '#':) $ readString cs
 		'&' -> readString cs
 		_
 			| isSpace c -> case span isSpace cs of
 				(_, '\\':rest) -> readString rest
 				_ -> error "Gap must end with a backslash."
 			| otherwise -> case readLitChar ('\\':s) of
-				[(c, rest)] -> mapFst (Character c:) $ readString rest
+				[(c, rest)] -> first (Character c:) $ readString rest
 				_ -> error "Unrecognized escape sequence."
 
 readInterpolation :: String -> ([StringPart], String)
