@@ -1,5 +1,5 @@
 name:                flamethrower
-version:             0.0.2.1
+version:             0.0.3.0
 synopsis:            A template engine for HTML
 description:
     Flamethrower is a simpler indentation-based template language for HTML.

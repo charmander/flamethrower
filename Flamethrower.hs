@@ -29,6 +29,7 @@ codeTreeToExpression functionMap tree = case tree of
 	C.If condition truePart falsePart ->
 		let cond = CondE condition (ListE $ map (codeTreeToExpression functionMap) truePart) (ListE $ map (codeTreeToExpression functionMap) falsePart)
 		in VarE (listConcatName functionMap) `AppE` cond
+	C.For bind loop children -> VarE (listConcatName functionMap) `AppE` CompE [BindS (VarP bind) loop, NoBindS $ VarE (listConcatName functionMap) `AppE` ListE (map (codeTreeToExpression functionMap) children)]
 
 compileTemplate :: FunctionMap -> String -> [Exp]
 compileTemplate functionMap = map (codeTreeToExpression functionMap) . C.compile . P.parse . L.lex

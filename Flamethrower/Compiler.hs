@@ -8,7 +8,11 @@ import Flamethrower.Parser
 import Flamethrower.Escape
 import Language.Haskell.Meta.Parse.Careful (parseExp)
 
-data CodeTree = Text String | Expression Escaper Exp | If Exp [CodeTree] [CodeTree]
+data CodeTree =
+	  Text String
+	| Expression Escaper Exp
+	| If Exp [CodeTree] [CodeTree]
+	| For Name Exp [CodeTree]
 	deriving Show
 
 data Compiled = Compiled {
@@ -93,6 +97,9 @@ compileNode node = case node of
 			classes = wrap trueClasses falseClasses,
 			content = wrap trueContent falseContent
 		}
+	ForNode identifier list children -> case parseExp list of
+		Left e -> error e
+		Right e -> fromContent [For (mkName identifier) e $ concatMap (contentOnly . compileNode) children]
 
 contentOnly :: Compiled -> [CodeTree]
 contentOnly Compiled { classes = [], attributes = [], content } = content

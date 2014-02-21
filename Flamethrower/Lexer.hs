@@ -1,7 +1,8 @@
 module Flamethrower.Lexer where
 
 import Data.Char
-import Control.Arrow (first)
+import Control.Arrow (first, second)
+import Data.List (isPrefixOf)
 
 data Context = Context { indentType :: Maybe Indent }
 data Indent = Tab | Spaces Int
@@ -17,6 +18,7 @@ data Token =
 	| Doctype
 	| If String
 	| Else
+	| For String String
 	deriving (Show, Eq)
 
 data StringPart = Character Char | Interpolation String
@@ -84,6 +86,7 @@ lexIdentifier context template = case readIdentifier template of
 		"doctype" -> Doctype : lexContent context rest
 		"if" -> lexIf context rest
 		"else" -> Else : lexContent context rest
+		"for" -> lexFor context rest
 		_ -> Element identifier : lexContent context rest
 
 readLine :: String -> (String, String)
@@ -95,8 +98,25 @@ readLine input = case input of
 
 lexIf :: Context -> String -> [Token]
 lexIf context template =
-	let (condition, rest) = first (dropWhile (== ' ')) $ readLine template
+	let (condition, rest) = readLine (dropWhile (== ' ') template)
 	in If condition : Newline : lexIndent context rest
+
+isHaskellVarIdCharacter :: Char -> Bool
+isHaskellVarIdCharacter = flip elem [UppercaseLetter, LowercaseLetter, TitlecaseLetter] . generalCategory
+
+readHaskellVarId :: String -> (String, String)
+readHaskellVarId input = case input of
+	c:rest | generalCategory c == LowercaseLetter -> first (c:) $ span isHaskellVarIdCharacter rest
+	_ -> ("", input)
+
+lexFor :: Context -> String -> [Token]
+lexFor context template = case second (dropWhile (== ' ')) . readHaskellVarId . dropWhile (== ' ') $ template of
+	("", _) -> error "Expected Haskell identifier."
+	(identifier, rest)
+		| "in " `isPrefixOf` rest ->
+			let (list, rest') = readLine $ dropWhile (== ' ') $ drop 3 rest
+			in For identifier list : Newline : lexIndent context rest'
+		| otherwise -> error "Expected “in”."
 
 lexComment :: Context -> String -> [Token]
 lexComment context template = case template of

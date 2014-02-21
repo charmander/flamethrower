@@ -13,6 +13,7 @@ data Node =
 	| ClassNode String
 	| DoctypeNode
 	| IfNode String [Node] [Node]
+	| ForNode String String [Node]
 	deriving (Show, Eq)
 
 data StringNode = String [StringPart] | Raw [StringPart]
@@ -58,6 +59,7 @@ parseContent indent tokens =
 					first (replicate 1 . IfNode condition inside) . continueParse $ drop (indent + 1) after
 				else
 					([IfNode condition inside []], after)
+		L.For identifier list : rest -> first (replicate 1 . ForNode identifier list) $ continueParse rest
 		x : _ -> error $ "Unexpected " ++ show x
 
 parseRoot :: [L.Token] -> ([Node], [L.Token])
