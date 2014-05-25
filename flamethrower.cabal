@@ -45,5 +45,5 @@ source-repository head
 library
     exposed-modules:     Flamethrower, Flamethrower.Parser, Flamethrower.Lexer, Flamethrower.Compiler, Flamethrower.Escape
     other-extensions:    NamedFieldPuns
-    build-depends:       base >=4.6 && <4.7, template-haskell >=2.8 && <2.9, haskell-src-meta >=0.6 && <0.7, text >= 1.1.0.0 && < 1.2
+    build-depends:       base >=4.7 && <4.8, template-haskell >=2.9 && <2.10, haskell-src-meta >=0.6 && <0.7, text >=1.1.0.0 && <1.2
     default-language:    Haskell2010
