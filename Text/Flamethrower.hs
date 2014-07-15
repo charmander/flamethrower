@@ -1,13 +1,14 @@
-module Flamethrower where
+-- | Contains the main quasiquoters that convert Flamethrower templates into expressions.
+module Text.Flamethrower (flamethrower, flamef) where
 
 import Data.Maybe (fromMaybe)
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 
-import qualified Flamethrower.Lexer as L
-import qualified Flamethrower.Parser as P
-import qualified Flamethrower.Compiler as C
-import Flamethrower.Escape
+import qualified Text.Flamethrower.Lexer as L
+import qualified Text.Flamethrower.Parser as P
+import qualified Text.Flamethrower.Compiler as C
+import Text.Flamethrower.Escape
 
 data FunctionMap = FunctionMap {
 	escapeContentName :: Name,
@@ -32,6 +33,7 @@ codeTreeToExpression functionMap tree = case tree of
 compileTemplate :: FunctionMap -> String -> [Exp]
 compileTemplate functionMap = map (codeTreeToExpression functionMap) . C.compile . P.parse . L.lex
 
+-- | Converts strings representing Flamethrower templates into expressions.
 flamethrower' :: String -> Q Exp
 flamethrower' template = do
 	let
@@ -39,7 +41,7 @@ flamethrower' template = do
 		get name = fmap (fromMaybe $ error $ "Couldn’t find name " ++ name ++ ".") $ lookupValueName name
 
 	[escapeContentName, escapeAttributeValueName, listConcatName, textConcatName] <-
-		mapM get ["Flamethrower.Escape.escapeContent", "Flamethrower.Escape.escapeAttributeValue", "Prelude.concat", "Data.Text.concat"]
+		mapM get ["Text.Flamethrower.Escape.escapeContent", "Text.Flamethrower.Escape.escapeAttributeValue", "Prelude.concat", "Data.Text.concat"]
 
 	let functionMap = FunctionMap {
 		escapeContentName = escapeContentName,
@@ -50,6 +52,23 @@ flamethrower' template = do
 
 	return $ VarE textConcatName `AppE` (VarE listConcatName `AppE` ListE (compileTemplate functionMap template))
 
+-- | A quasiquoter to convert Flamethrower templates into expressions.
+--
+-- > exampleTemplate :: Text -> Text
+-- > exampleTemplate title = [flamethrower|
+-- > doctype
+-- >
+-- > html
+-- >     head
+-- >         meta charset: "utf-8"
+-- >
+-- >         title "#{title}"
+-- >
+-- >     body
+-- >         h1 "A page"
+-- >
+-- >         p "Hello, world!"
+-- > |]
 flamethrower :: QuasiQuoter
 flamethrower = QuasiQuoter {
 	quoteExp = flamethrower',
@@ -58,5 +77,9 @@ flamethrower = QuasiQuoter {
 	quoteType = error "Flamethrower templates are expressions, not types."
 }
 
+-- | A quasiquoter that reads Flamethrower template files.
+--
+-- > exampleTemplate :: Text -> Text
+-- > exampleTemplate title = [flamef|example-template.flame|]
 flamef :: QuasiQuoter
 flamef = quoteFile flamethrower

@@ -1,4 +1,4 @@
-module Flamethrower.Lexer where
+module Text.Flamethrower.Lexer where
 
 import Data.Char
 import Control.Arrow (first, second)

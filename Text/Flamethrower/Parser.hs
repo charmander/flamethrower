@@ -1,9 +1,9 @@
-module Flamethrower.Parser where
+module Text.Flamethrower.Parser where
 
 import Control.Arrow (first)
 import Data.List (isPrefixOf)
-import qualified Flamethrower.Lexer as L
-import Flamethrower.Lexer (StringPart)
+import qualified Text.Flamethrower.Lexer as L
+import Text.Flamethrower.Lexer (StringPart)
 import Language.Haskell.TH (Exp, stringE)
 
 data Node =

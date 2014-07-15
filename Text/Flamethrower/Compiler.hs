@@ -1,9 +1,9 @@
-module Flamethrower.Compiler where
+module Text.Flamethrower.Compiler where
 
 import Language.Haskell.TH
-import qualified Flamethrower.Lexer as L
-import Flamethrower.Parser
-import Flamethrower.Escape
+import qualified Text.Flamethrower.Lexer as L
+import Text.Flamethrower.Parser
+import Text.Flamethrower.Escape
 import Language.Haskell.Meta.Parse.Careful (parseExp)
 
 data CodeTree =
