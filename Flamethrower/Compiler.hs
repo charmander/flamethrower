@@ -1,5 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
-
 module Flamethrower.Compiler where
 
 import Language.Haskell.TH
@@ -22,13 +20,13 @@ data Compiled = Compiled {
 }
 
 fromClasses :: [CodeTree] -> Compiled
-fromClasses classes = Compiled { classes, attributes = [], content = [] }
+fromClasses classes = Compiled { classes = classes, attributes = [], content = [] }
 
 fromAttributes :: [CodeTree] -> Compiled
-fromAttributes attributes = Compiled { classes = [], attributes, content = [] }
+fromAttributes attributes = Compiled { classes = [], attributes = attributes, content = [] }
 
 fromContent :: [CodeTree] -> Compiled
-fromContent content = Compiled { classes = [], attributes = [], content }
+fromContent content = Compiled { classes = [], attributes = [], content = content }
 
 stringPartToCode :: Escaper -> L.StringPart -> CodeTree
 stringPartToCode escaper part = case part of
@@ -102,7 +100,7 @@ compileNode node = case node of
 		Right e -> fromContent [For (mkName identifier) e $ concatMap (contentOnly . compileNode) children]
 
 contentOnly :: Compiled -> [CodeTree]
-contentOnly Compiled { classes = [], attributes = [], content } = content
+contentOnly Compiled { classes = [], attributes = [], content = content } = content
 
 optimized :: [CodeTree] -> [CodeTree]
 optimized tree = case tree of

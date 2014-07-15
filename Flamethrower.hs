@@ -1,5 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
-
 module Flamethrower where
 
 import Data.Maybe (fromMaybe)
@@ -43,7 +41,12 @@ flamethrower' template = do
 	[escapeContentName, escapeAttributeValueName, listConcatName, textConcatName] <-
 		mapM get ["Flamethrower.Escape.escapeContent", "Flamethrower.Escape.escapeAttributeValue", "Prelude.concat", "Data.Text.concat"]
 
-	let functionMap = FunctionMap { escapeContentName, escapeAttributeValueName, listConcatName, textConcatName }
+	let functionMap = FunctionMap {
+		escapeContentName = escapeContentName,
+		escapeAttributeValueName = escapeAttributeValueName,
+		listConcatName = listConcatName,
+		textConcatName = textConcatName
+	}
 
 	return $ VarE textConcatName `AppE` (VarE listConcatName `AppE` ListE (compileTemplate functionMap template))
 
