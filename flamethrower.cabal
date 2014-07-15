@@ -1,5 +1,5 @@
 name:                flamethrower
-version:             0.0.3.0
+version:             0.0.3.1
 synopsis:            A template engine for HTML
 description:
     Flamethrower is a simpler indentation-based template language for HTML.
@@ -23,7 +23,7 @@ description:
         &#9;&#34;!&#34;
     |]
     .
-    main = Data.Text.IO.putStrLn (render &#34;world&#34;)
+    main = Data.Text.IO.putStrLn $ render &#34;world&#34;
     .
     &#45;&#45; &#60;p id=&#34;greeting&#34;&#62;Hello, &#60;em&#62;world&#60;&#47;em&#62;!&#60;&#47;p&#62;
     @
@@ -32,7 +32,7 @@ homepage:            https://charmander.me/flamethrower/
 license:             MIT
 license-file:        LICENSE
 author:              Charmander
-maintainer:          campersander@gmail.com
+maintainer:          ~@charmander.me
 category:            Text, HTML, Web
 build-type:          Simple
 cabal-version:       >=1.10
