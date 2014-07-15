@@ -2,7 +2,7 @@
 
 module Flamethrower where
 
-import Data.Maybe (fromJust)
+import Data.Maybe (fromMaybe)
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 
@@ -38,7 +38,7 @@ flamethrower' :: String -> Q Exp
 flamethrower' template = do
 	let
 		get :: String -> Q Name
-		get = fmap fromJust . lookupValueName
+		get name = fmap (fromMaybe $ error $ "Couldn’t find name " ++ name ++ ".") $ lookupValueName name
 
 	[escapeContentName, escapeAttributeValueName, listConcatName, textConcatName] <-
 		mapM get ["Flamethrower.Escape.escapeContent", "Flamethrower.Escape.escapeAttributeValue", "Prelude.concat", "Data.Text.concat"]
