@@ -4,7 +4,6 @@ import Language.Haskell.TH
 import qualified Text.Flamethrower.Lexer as L
 import Text.Flamethrower.Parser
 import Text.Flamethrower.Escape
-import Language.Haskell.Meta.Parse.Careful (parseExp)
 
 data CodeTree =
 	  Text String
@@ -18,6 +17,9 @@ data Compiled = Compiled {
 	classes :: [CodeTree],
 	content :: [CodeTree]
 }
+
+parseExp :: String -> Either String Exp
+parseExp = Right . VarE . mkName
 
 fromClasses :: [CodeTree] -> Compiled
 fromClasses classes = Compiled { classes = classes, attributes = [], content = [] }
