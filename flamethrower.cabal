@@ -11,8 +11,7 @@ description:
     &#123;-&#35; LANGUAGE QuasiQuotes &#35;-&#125;
     &#123;-&#35; LANGUAGE OverloadedStrings &#35;-&#125;
     .
-    import Text.Flamethrower
-    import Data.Text
+    import Text.Flamethrower (flamethrower)
     import qualified Data.Text.IO
     .
     render name = [flamethrower|

@@ -1,5 +1,7 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 -- | Contains the main quasiquoters that convert Flamethrower templates into expressions.
-module Text.Flamethrower (flamethrower, flamef, escapeAttributeValue, escapeContent) where
+module Text.Flamethrower (flamethrower, flamef) where
 
 import Data.Maybe (fromMaybe)
 import Language.Haskell.TH
@@ -10,47 +12,27 @@ import qualified Text.Flamethrower.Parser as P
 import qualified Text.Flamethrower.Compiler as C
 import Text.Flamethrower.Escape
 
-data FunctionMap = FunctionMap {
-	escapeContentName :: Name,
-	escapeAttributeValueName :: Name,
-	listConcatName :: Name,
-	textConcatName :: Name
-}
+import qualified Data.Text
 
-codeTreeToExpression :: FunctionMap -> C.CodeTree -> Exp
-codeTreeToExpression functionMap tree = case tree of
+codeTreeToExpression :: C.CodeTree -> Exp
+codeTreeToExpression tree = case tree of
 	C.Text s -> ListE [LitE $ StringL s]
 	C.Expression escaper exp -> ListE . replicate 1 $
 		case escaper of
 			None -> exp
-			Content -> VarE (escapeContentName functionMap) `AppE` exp
-			Attribute -> VarE (escapeAttributeValueName functionMap) `AppE` exp
+			Content -> VarE 'escapeContent `AppE` exp
+			Attribute -> VarE 'escapeAttributeValue `AppE` exp
 	C.If condition truePart falsePart ->
-		let cond = CondE condition (ListE $ map (codeTreeToExpression functionMap) truePart) (ListE $ map (codeTreeToExpression functionMap) falsePart)
-		in VarE (listConcatName functionMap) `AppE` cond
-	C.For bind loop children -> VarE (listConcatName functionMap) `AppE` CompE [BindS (VarP bind) loop, NoBindS $ VarE (listConcatName functionMap) `AppE` ListE (map (codeTreeToExpression functionMap) children)]
+		let cond = CondE condition (ListE $ map codeTreeToExpression truePart) (ListE $ map codeTreeToExpression falsePart)
+		in VarE 'concat `AppE` cond
+	C.For bind loop children -> VarE 'concat `AppE` CompE [BindS (VarP bind) loop, NoBindS $ VarE 'concat `AppE` ListE (map codeTreeToExpression children)]
 
-compileTemplate :: FunctionMap -> String -> [Exp]
-compileTemplate functionMap = map (codeTreeToExpression functionMap) . C.compile . P.parse . L.lex
+compileTemplate :: String -> [Exp]
+compileTemplate = map codeTreeToExpression . C.compile . P.parse . L.lex
 
 -- | Converts strings representing Flamethrower templates into expressions.
 flamethrower' :: String -> Q Exp
-flamethrower' template = do
-	let
-		get :: String -> Q Name
-		get name = fmap (fromMaybe $ error $ "Couldn’t find name " ++ name ++ ".") $ lookupValueName name
-
-	[escapeContentName, escapeAttributeValueName, listConcatName, textConcatName] <-
-		mapM get ["Text.Flamethrower.escapeContent", "Text.Flamethrower.escapeAttributeValue", "Prelude.concat", "Data.Text.concat"]
-
-	let functionMap = FunctionMap {
-		escapeContentName = escapeContentName,
-		escapeAttributeValueName = escapeAttributeValueName,
-		listConcatName = listConcatName,
-		textConcatName = textConcatName
-	}
-
-	return $ VarE textConcatName `AppE` (VarE listConcatName `AppE` ListE (compileTemplate functionMap template))
+flamethrower' template = return $ VarE 'Data.Text.concat `AppE` (VarE 'concat `AppE` ListE (compileTemplate template))
 
 -- | A quasiquoter to convert Flamethrower templates into expressions.
 --
