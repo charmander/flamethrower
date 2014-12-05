@@ -1,5 +1,5 @@
 -- | Contains the main quasiquoters that convert Flamethrower templates into expressions.
-module Text.Flamethrower (flamethrower, flamef) where
+module Text.Flamethrower (flamethrower, flamef, escapeAttributeValue, escapeContent) where
 
 import Data.Maybe (fromMaybe)
 import Language.Haskell.TH
@@ -41,7 +41,7 @@ flamethrower' template = do
 		get name = fmap (fromMaybe $ error $ "Couldn’t find name " ++ name ++ ".") $ lookupValueName name
 
 	[escapeContentName, escapeAttributeValueName, listConcatName, textConcatName] <-
-		mapM get ["Text.Flamethrower.Escape.escapeContent", "Text.Flamethrower.Escape.escapeAttributeValue", "Prelude.concat", "Data.Text.concat"]
+		mapM get ["Text.Flamethrower.escapeContent", "Text.Flamethrower.escapeAttributeValue", "Prelude.concat", "Data.Text.concat"]
 
 	let functionMap = FunctionMap {
 		escapeContentName = escapeContentName,

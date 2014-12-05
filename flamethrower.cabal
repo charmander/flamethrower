@@ -12,7 +12,6 @@ description:
     &#123;-&#35; LANGUAGE OverloadedStrings &#35;-&#125;
     .
     import Text.Flamethrower
-    import Text.Flamethrower.Escape
     import Data.Text
     import qualified Data.Text.IO
     .

@@ -49,9 +49,3 @@ escapeCharacter :: Escaper -> Char -> String
 escapeCharacter None = replicate 1
 escapeCharacter Content = escapeContentCharacter
 escapeCharacter Attribute = escapeAttributeCharacter
-
--- | Converts characters in text into equivalent HTML character references as defined by the given 'Escaper'.
-escape :: Escaper -> Text.Text -> Text.Text
-escape None = id
-escape Content = escapeContent
-escape Attribute = escapeAttributeValue
